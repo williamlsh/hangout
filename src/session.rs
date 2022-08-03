@@ -69,13 +69,11 @@ impl Session {
                             StateResult::Str(value) if value.eq("OK") => {
                                 // The passphrase doesn't exist before.
                                 console_debug!("this is caller");
-                                self.websocket.send_with_str("1").unwrap();
                                 Role::Caller
                             }
                             StateResult::Null => {
                                 // The passphrase already exists.
                                 console_debug!("this is callee");
-                                self.websocket.send_with_str("0").unwrap();
                                 Role::Callee
                             }
                             _ => {
@@ -83,6 +81,7 @@ impl Session {
                                 return;
                             }
                         };
+                        Self::response_based_on_role(&role, &self.websocket);
                         registry = Some(Registry::new(passphrase, role));
                     }
                     StateResponse::Error(error) => {
@@ -172,6 +171,21 @@ impl Session {
                 break;
             }
         }
+    }
+
+    fn response_based_on_role(role: &Role, ws: &WebSocket) {
+        let message = match role {
+            Role::Caller => protocol::Message {
+                event: protocol::Event::Passphrase,
+                data: "1".into(),
+            },
+            Role::Callee => protocol::Message {
+                event: protocol::Event::Passphrase,
+                data: "0".into(),
+            },
+        };
+        let serialized_message = serde_json::to_string(&message).unwrap();
+        ws.send_with_str(&serialized_message).unwrap();
     }
 }
 

@@ -3,6 +3,9 @@ name = "hangout"
 version = "0.1.0"
 edition = "2021"
 
+[workspace]
+members = ["peer", "protocol"]
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 
@@ -21,6 +24,7 @@ serde_json = "1.0"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 worker = "0.0.10"
+protocol = { path = "protocol"}
 
 [profile.release]
 opt-level = "s"
