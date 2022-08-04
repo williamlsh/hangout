@@ -5,12 +5,12 @@ Hangout is a fullstack solution written completely in Rust compiled to WASM for 
 It consists of three components:
 
 - Peers run in web browsers
-- Signal server for ICE trickling hosted on Cloudflare workers
+- Signal server for calling session coordination, SDP exchanging and ICE trickling hosted on Cloudflare workers
 - Public TURN/STURN server for NAT traversal and relay.
 
 Note: This project is still under active development.
 
-## Why this project is awesome?
+## Why is this project awesome?
 
 The first thing makes this project awesome is the awesome technologies it is powered by. The combination of Rust, WASM and WebRTC.
 
