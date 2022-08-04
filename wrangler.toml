@@ -7,5 +7,9 @@ compatibility_date = "2022-01-20"
 [build]
 command = "cargo install -q worker-build && worker-build --release"
 
+[site]
+bucket = "./static"
+include = ["index.html", "pkg/peer.js", "pkg/peer_bg.wasm"]
+
 # read more about configuring your Worker via wrangler.toml at:
 # https://developers.cloudflare.com/workers/cli-wrangler/configuration

@@ -5,8 +5,8 @@ mod utils;
 use session::Session;
 use state::State;
 use worker::{
-    console_debug, event, Context, Date, Env, Request, Response, Result, RouteContext, Router,
-    WebSocket, WebSocketPair,
+    console_debug, event, Context, Date, Env, Headers, Request, Response, Result, RouteContext,
+    Router, WebSocket, WebSocketPair,
 };
 
 #[event(fetch, respond_with_errors)]
@@ -34,8 +34,23 @@ pub async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
 
             Response::from_websocket(client)
         })
-        .or_else_any_method_async("/", |_, _| async {
-            Response::ok("Welcome to Hangout, a private person to person calling service.")
+        .on_async("/", |req, ctx| async {
+            let asset = handle_assets(req, ctx).await;
+            Response::from_html(&asset)
+        })
+        .on_async("/pkg/peer.js", |req, ctx| async {
+            let asset = handle_assets(req, ctx).await;
+            let mut headers = Headers::new();
+            headers
+                .set("Content-Type", "application/javascript")
+                .unwrap();
+            Response::ok(&asset).map(|response| response.with_headers(headers))
+        })
+        .on_async("/pkg/peer_bg.wasm", |req, ctx| async {
+            let asset = handle_wasm_asset(req, ctx).await;
+            let mut headers = Headers::new();
+            headers.set("Content-Type", "application/wasm").unwrap();
+            Response::from_bytes(asset).map(|response| response.with_headers(headers))
         })
         .run(req, env)
         .await
@@ -56,6 +71,44 @@ async fn handle_websocket(ws: WebSocket, ctx: RouteContext<()>) {
     );
     let session = Session::new(ws, state);
     session.start().await;
+}
+
+async fn handle_assets(req: Request, ctx: RouteContext<()>) -> String {
+    let extension = match req.path().as_str() {
+        "/" => "html",
+        "/pkg/peer.js" => "js",
+        _ => "html",
+    };
+    console_debug!(
+        "request path: {}, path extension: {}",
+        req.path(),
+        extension
+    );
+
+    let kv_store = ctx.kv("__STATIC_CONTENT").unwrap();
+    let list = kv_store.list().execute().await.unwrap();
+    let key = list.keys.iter().find(|&key| key.name.ends_with(extension));
+    match key {
+        Some(key) => kv_store
+            .get(&key.name)
+            .text()
+            .await
+            .unwrap()
+            .unwrap_or_default(),
+        None => "".into(),
+    }
+}
+
+async fn handle_wasm_asset(_req: Request, ctx: RouteContext<()>) -> Vec<u8> {
+    let kv_store = ctx.kv("__STATIC_CONTENT").unwrap();
+    let list = kv_store.list().execute().await.unwrap();
+    let key = list.keys.iter().find(|&key| key.name.ends_with("wasm"));
+    kv_store
+        .get(&key.unwrap().name)
+        .bytes()
+        .await
+        .unwrap()
+        .unwrap()
 }
 
 fn log_request(req: &Request) {
